@@ -140,6 +140,32 @@
   }
   .toast.show { opacity: 1; }
 
+  /* PDPA notice */
+  .pdpa-banner {
+    background: #fff8e6;
+    border: 1.5px solid #f2d478;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #7a5b12;
+    display: flex; gap: 10px; align-items: flex-start;
+    margin-bottom: 24px;
+  }
+  .pdpa-banner b { color: #5c4408; }
+  .consent-row {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: #f3f0ff; border: 1.5px solid #d8d1f8;
+    border-radius: 10px; padding: 10px 12px;
+    font-size: 13px; color: var(--muted);
+    cursor: pointer;
+  }
+  .consent-row input { width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; accent-color: var(--purple); }
+  .consent-row b { color: var(--purple); }
+  .footer-note {
+    text-align: center; font-size: 12px; color: var(--muted);
+    padding: 18px 0 6px; border-top: 1px solid var(--border);
+  }
+
   @media (max-width: 760px) {
     .add-grid { grid-template-columns: 1fr 1fr; }
     .stages { flex-direction: column; }
@@ -157,6 +183,16 @@
 </header>
 
 <div class="wrap">
+
+  <div class="pdpa-banner">
+    <span style="font-size:18px;">🔒</span>
+    <div>
+      <b>Data protection notice (PDPA 2010).</b> Patient personal data in this screen is used only for managing
+      today’s visits. Nothing is stored or transmitted — all entries are cleared when the page is closed.
+      Patients have the right to access and correct their personal data and to withdraw consent;
+      contact the clinic’s data protection officer for any request. Do not enter real patient data in this demo.
+    </div>
+  </div>
 
   <!-- SECTION 1: Patient details -->
   <section>
@@ -181,7 +217,16 @@
         </select>
         <button class="pink" onclick="addPatient()">Add Patient</button>
       </div>
+      <label class="consent-row">
+        <input type="checkbox" id="pConsent">
+        <span><b>PDPA 2010 consent obtained.</b> The patient has been informed of the purpose of collection
+        (visit management only), their right to access and correct their data, and how to contact the clinic’s
+        data protection officer.</span>
+      </label>
       <div id="patList"></div>
+      <div style="margin-top:12px;">
+        <button class="small" style="background:#8a8499;" onclick="clearAllData()">Clear All Patient Data (End of Session)</button>
+      </div>
     </div>
   </section>
 
@@ -223,6 +268,11 @@
     </div>
   </section>
 
+</div>
+
+<div class="footer-note">
+  CLINQO demo · Personal data handled in line with the Personal Data Protection Act 2010 (Act 709) and
+  Ministry of Health Malaysia privacy guidance · Sample data only — not for use with real patient records.
 </div>
 
 <div class="toast" id="toast"></div>
@@ -275,12 +325,14 @@ function addPatient(){
   const type = $("pType").value;
   if (!name){ toast("Please enter the patient’s name."); $("pName").focus(); return; }
   if (isNaN(age) || age < 0 || age > 120){ toast("Please enter a valid age."); $("pAge").focus(); return; }
-  patients.push({ id: nextId, name, phone, age, type, stage: 0 });
+  if (!$("pConsent").checked){ toast("PDPA consent must be recorded before registering the patient."); $("pConsent").focus(); return; }
+  patients.push({ id: nextId, name, phone, age, type, stage: 0, consent: true });
   selected = nextId;
   nextId++;
   $("pName").value = ""; $("pPhone").value = ""; $("pAge").value = "";
+  $("pConsent").checked = false;
   renderAll();
-  toast(`${name} registered — stage: Registered`);
+  toast(`${name} registered — consent recorded, stage: Registered`);
 }
 
 function selectPatient(id){
@@ -302,6 +354,11 @@ function moveStage(dir){ moveStep(dir); }
 
 function renderWorkflow(){
   const p = patients.find(x=>x.id===selected);
+  if (!p){
+    $("stageRow").innerHTML = `<div class="empty" style="grid-column:1/-1;">No patient selected — register or select a patient above.</div>`;
+    $("wfPatient").textContent = "";
+    return;
+  }
   $("stageRow").innerHTML = STAGES.map((s,i)=>{
     let cls = "";
     if (i < p.stage) cls = "past";
@@ -324,6 +381,12 @@ function renderWorkflow(){
 /* ---------- Section 3 ---------- */
 function renderSummary(){
   const p = patients.find(x=>x.id===selected);
+  if (!p){
+    $("sumPatientName").textContent = "No patient selected";
+    $("sumInput").value = "";
+    $("sumDisplay").innerHTML = `<b>Latest summary:</b> Select or register a patient first.`;
+    return;
+  }
   $("sumPatientName").innerHTML = `${p.name}
     <span class="stage-pill" style="background:${STAGE_COLORS[p.stage]}">${STAGES[p.stage]}</span>`;
   const s = summaries[p.id];
@@ -338,6 +401,14 @@ function saveSummary(){
   summaries[selected] = txt;
   renderSummary();
   toast("Visit summary saved.");
+}
+
+function clearAllData(){
+  patients = [];
+  summaries = {};
+  selected = null;
+  renderAll();
+  toast("All patient data cleared from this session.");
 }
 
 function renderAll(){
