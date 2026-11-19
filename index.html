@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLINQO — Patient Visit Tracker</title>
+<style>
+  :root {
+    --pink: #ff4f81;
+    --teal: #00b8a9;
+    --purple: #6c5ce7;
+    --orange: #ff9f43;
+    --ink: #2d2a3d;
+    --muted: #6e6a85;
+    --bg: #fdf7f2;
+    --card: #ffffff;
+    --border: #f0e4dc;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  header {
+    background: linear-gradient(120deg, var(--pink), var(--orange));
+    color: #fff;
+    padding: 24px 32px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .logo {
+    width: 46px; height: 46px; border-radius: 14px;
+    background: rgba(255,255,255,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+  }
+  header h1 { font-size: 24px; letter-spacing: 2px; font-weight: 800; }
+  header p { font-size: 13px; opacity: 0.9; }
+
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 26px 20px 60px; }
+  section { margin-bottom: 28px; }
+  .sec-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .sec-tag {
+    width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 16px;
+  }
+  .sec-head h2 { font-size: 18px; }
+  .sec-head span { font-size: 12.5px; color: var(--muted); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: 0 4px 14px rgba(80,50,30,0.07);
+  }
+
+  /* Section 1: patient details */
+  .add-grid { display: grid; grid-template-columns: 1.3fr 1fr 0.6fr 1fr auto; gap: 10px; margin-bottom: 14px; }
+  input, select, textarea {
+    font-family: inherit; font-size: 14px; color: var(--ink);
+    border: 2px solid var(--border); border-radius: 10px;
+    padding: 9px 12px; background: #fff; width: 100%;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--pink);
+    box-shadow: 0 0 0 3px rgba(255,79,129,0.12);
+  }
+  .pat-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 8px; border-bottom: 1px solid var(--border);
+    cursor: pointer; border-radius: 8px;
+  }
+  .pat-row:last-child { border-bottom: none; }
+  .pat-row:hover { background: #fff4ef; }
+  .pat-row.selected { background: #ffeef4; }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 14px;
+  }
+  .pat-name { font-weight: 700; }
+  .pat-sub { color: var(--muted); font-size: 12.5px; }
+  .pat-main { flex: 1; }
+
+  /* Section 2: workflow */
+  .stages { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stage-chip {
+    flex: 1; min-width: 120px;
+    border: 2px dashed var(--border); border-radius: 12px;
+    padding: 10px 12px; text-align: center;
+    color: var(--muted); font-weight: 600; font-size: 13px;
+    background: #fff;
+  }
+  .stage-chip.current {
+    border-style: solid; color: #fff; border-color: transparent;
+  }
+  .stage-chip.past { border-style: solid; border-color: var(--teal); color: var(--teal); background: #e6faf7; }
+  .stage-chip .who { display: block; font-size: 11.5px; font-weight: 500; opacity: 0.85; }
+  .workflow-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .wf-patient { font-weight: 700; color: var(--purple); }
+
+  button {
+    font-family: inherit; font-size: 13.5px; font-weight: 700;
+    border: none; color: #fff; padding: 9px 16px;
+    border-radius: 10px; cursor: pointer;
+    transition: filter .15s;
+  }
+  button:hover { filter: brightness(0.92); }
+  button.pink { background: var(--pink); }
+  button.teal { background: var(--teal); }
+  button.purple { background: var(--purple); }
+  button.orange { background: var(--orange); }
+  button.small { padding: 5px 12px; font-size: 12.5px; }
+
+  /* Section 3: summary */
+  .summary-card {
+    background: linear-gradient(120deg, #f3f0ff, #e6faf7);
+    border-radius: 12px; padding: 14px 16px; font-size: 14px;
+    margin-top: 12px;
+  }
+  .summary-card b { color: var(--purple); }
+  .stage-pill {
+    display: inline-block; color: #fff; font-size: 12px; font-weight: 700;
+    padding: 3px 12px; border-radius: 20px; margin-left: 6px;
+  }
+  .empty { color: var(--muted); font-size: 13.5px; padding: 10px 8px; }
+
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--ink); color: #fff; padding: 11px 18px;
+    border-radius: 12px; font-size: 14px; font-weight: 600;
+    opacity: 0; pointer-events: none; transition: opacity .3s;
+    z-index: 50;
+  }
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 760px) {
+    .add-grid { grid-template-columns: 1fr 1fr; }
+    .stages { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">💊</div>
+  <div>
+    <h1>CLINQO</h1>
+    <p>Pusat Kesihatan Ceria · Johor Bahru · Patient visit tracker</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- SECTION 1: Patient details -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag" style="background: var(--pink);">👥</div>
+      <div>
+        <h2>Patient Details</h2>
+        <span>Basic patient information — click a patient to select them below</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="add-grid">
+        <input id="pName" placeholder="Full name (e.g. Nurul Hidayah)">
+        <input id="pPhone" placeholder="Phone (e.g. 012-345 6789)">
+        <input id="pAge" type="number" min="0" max="120" placeholder="Age">
+        <select id="pType">
+          <option>New Patient Screening</option>
+          <option>Dental Check-up</option>
+          <option>General Consultation</option>
+          <option>Blood Test Review</option>
+          <option>Physiotherapy Session</option>
+        </select>
+        <button class="pink" onclick="addPatient()">Add Patient</button>
+      </div>
+      <div id="patList"></div>
+    </div>
+  </section>
+
+  <!-- SECTION 2: Visit workflow -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag" style="background: var(--teal);">🔄</div>
+      <div>
+        <h2>Visit Workflow</h2>
+        <span>Move the selected patient through each stage of the visit</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="stages" id="stageRow"></div>
+      <div class="workflow-controls">
+        <span class="wf-patient" id="wfPatient"></span>
+        <button class="teal small" id="btnBack" onclick="moveStage(-1)">← Back a Step</button>
+        <button class="purple small" id="btnNext" onclick="moveStage(1)">Advance a Step →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 3: Visit summary -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag" style="background: var(--purple);">📝</div>
+      <div>
+        <h2>Visit Summary</h2>
+        <span>Quick summary for the selected patient</span>
+      </div>
+    </div>
+    <div class="card">
+      <p style="font-weight:700; margin-bottom:8px;" id="sumPatientName"></p>
+      <textarea id="sumInput" rows="3" placeholder="Short visit summary (e.g. reviewed blood results, all within normal range…)"></textarea>
+      <div style="margin-top:10px;">
+        <button class="purple" onclick="saveSummary()">Save Summary</button>
+      </div>
+      <div class="summary-card" id="sumDisplay"></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STAGES = ["Registered", "Checked In", "Waiting", "Consultation", "Done"];
+const STAGE_COLORS = ["#ff9f43", "#ff4f81", "#00b8a9", "#6c5ce7", "#2d9d78"];
+const AVATAR_COLORS = ["#ff4f81", "#6c5ce7", "#00b8a9", "#ff9f43", "#e84393", "#0984e3"];
+const TYPES = ["New Patient Screening","Dental Check-up","General Consultation","Blood Test Review","Physiotherapy Session"];
+
+let patients = [
+  { id: 1, name: "Nurul Hidayah",  phone: "012-345 6789", age: 34, type: "General Consultation", stage: 3 },
+  { id: 2, name: "Lim Chee Keong", phone: "017-888 2210", age: 47, type: "Dental Check-up",      stage: 1 },
+  { id: 3, name: "Kavitha Raman",  phone: "019-654 3321", age: 28, type: "New Patient Screening", stage: 0 },
+];
+let nextId = 4;
+let selected = 1;
+
+let summaries = {
+  1: "Discussed recurring tension headaches. Advised hydration and screen breaks; follow-up in 4 weeks if unresolved.",
+};
+
+function $(id){ return document.getElementById(id); }
+function toast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._h);
+  t._h = setTimeout(()=>t.classList.remove("show"), 2200);
+}
+function initials(n){ return n.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase(); }
+
+/* ---------- Section 1 ---------- */
+function renderPatients(){
+  $("patList").innerHTML = patients.map(p=>`
+    <div class="pat-row ${p.id===selected?"selected":""}" onclick="selectPatient(${p.id})">
+      <div class="avatar" style="background:${AVATAR_COLORS[(p.id-1)%AVATAR_COLORS.length]}">${initials(p.name)}</div>
+      <div class="pat-main">
+        <div class="pat-name">${p.name}</div>
+        <div class="pat-sub">${p.phone} · ${p.age} yrs · ${p.type}</div>
+      </div>
+      <span class="stage-pill" style="background:${STAGE_COLORS[p.stage]}">${STAGES[p.stage]}</span>
+    </div>`).join("");
+}
+
+function addPatient(){
+  const name = $("pName").value.trim();
+  const phone = $("pPhone").value.trim() || "Not provided";
+  const age = parseInt($("pAge").value, 10);
+  const type = $("pType").value;
+  if (!name){ toast("Please enter the patient’s name."); $("pName").focus(); return; }
+  if (isNaN(age) || age < 0 || age > 120){ toast("Please enter a valid age."); $("pAge").focus(); return; }
+  patients.push({ id: nextId, name, phone, age, type, stage: 0 });
+  selected = nextId;
+  nextId++;
+  $("pName").value = ""; $("pPhone").value = ""; $("pAge").value = "";
+  renderAll();
+  toast(`${name} registered — stage: Registered`);
+}
+
+function selectPatient(id){
+  selected = id;
+  $("sumInput").value = summaries[id] || "";
+  renderAll();
+}
+
+/* ---------- Section 2 ---------- */
+function moveStep(dir){
+  const p = patients.find(x=>x.id===selected);
+  const next = Math.min(STAGES.length-1, Math.max(0, p.stage + dir));
+  if (next === p.stage){ toast(p.stage===0 ? "Already at the first stage." : "Visit already completed."); return; }
+  p.stage = next;
+  renderAll();
+  toast(`${p.name} → ${STAGES[next]}`);
+}
+function moveStage(dir){ moveStep(dir); }
+
+function renderWorkflow(){
+  const p = patients.find(x=>x.id===selected);
+  $("stageRow").innerHTML = STAGES.map((s,i)=>{
+    let cls = "";
+    if (i < p.stage) cls = "past";
+    else if (i === p.stage) cls = "current";
+    const style = cls==="current"
+      ? `background:${STAGE_COLORS[i]}`
+      : cls==="past"
+        ? `border-color:${STAGE_COLORS[i]}; color:${STAGE_COLORS[i]}; background:#fff`
+        : "";
+    return `<div class="stage-chip ${cls}" style="${style}">
+      ${s}${cls==="current" ? `<span class="who">${p.name} is here</span>` : ""}</div>`;
+  }).join("");
+  $("wfPatient").textContent = `Selected: ${p.name}`;
+  $("btnBack").disabled = p.stage === 0;
+  $("btnBack").style.opacity = p.stage === 0 ? 0.5 : 1;
+  $("btnNext").disabled = p.stage === STAGES.length-1;
+  $("btnNext").style.opacity = p.stage === STAGES.length-1 ? 0.5 : 1;
+}
+
+/* ---------- Section 3 ---------- */
+function renderSummary(){
+  const p = patients.find(x=>x.id===selected);
+  $("sumPatientName").innerHTML = `${p.name}
+    <span class="stage-pill" style="background:${STAGE_COLORS[p.stage]}">${STAGES[p.stage]}</span>`;
+  const s = summaries[p.id];
+  $("sumDisplay").innerHTML = s
+    ? `<b>Latest summary:</b> ${s}`
+    : `<b>Latest summary:</b> No summary saved yet for this patient.`;
+}
+
+function saveSummary(){
+  const txt = $("sumInput").value.trim();
+  if (!txt){ toast("Type a short summary before saving."); $("sumInput").focus(); return; }
+  summaries[selected] = txt;
+  renderSummary();
+  toast("Visit summary saved.");
+}
+
+function renderAll(){
+  renderPatients();
+  renderWorkflow();
+  renderSummary();
+}
+
+$("sumInput").value = summaries[selected] || "";
+renderAll();
+</script>
+</body>
+</html>
