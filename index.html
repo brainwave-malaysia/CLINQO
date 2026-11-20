@@ -166,6 +166,27 @@
     padding: 18px 0 6px; border-top: 1px solid var(--border);
   }
 
+  /* Dark mode */
+  body.dark {
+    --ink: #ece9f5;
+    --muted: #a5a1bd;
+    --bg: #1e1b2a;
+    --card: #2a2739;
+    --border: #3d3852;
+  }
+  body.dark .pat-row:hover { background: #332e47; }
+  body.dark .pat-row.selected { background: #3d2f42; }
+  body.dark .stage-chip { background: var(--card); }
+  body.dark .stage-chip.past { background: #243c39; }
+  body.dark .summary-card { background: linear-gradient(120deg, #2f2b45, #243c39); }
+  body.dark .pdpa-banner { background: #332c17; border-color: #6b5a1e; color: #d9c98a; }
+  body.dark .pdpa-banner b { color: #ecdb9c; }
+  body.dark .consent-row { background: #2f2b45; border-color: #4a4370; color: var(--muted); }
+  .theme-toggle {
+    margin-left: auto; background: rgba(255,255,255,0.22);
+    font-size: 18px; padding: 8px 12px; line-height: 1;
+  }
+
   @media (max-width: 760px) {
     .add-grid { grid-template-columns: 1fr 1fr; }
     .stages { flex-direction: column; }
@@ -178,19 +199,35 @@
   <div class="logo">💊</div>
   <div>
     <h1>CLINQO</h1>
-    <p>Pusat Kesihatan Ceria · Johor Bahru · Patient visit tracker</p>
+    <p id="headerSub">Patient visit tracker</p>
   </div>
+  <button class="small" style="background:rgba(255,255,255,0.22); margin-right:8px;" onclick="editClinicName()" title="Change clinic name">⚙️ Clinic</button>
+  <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
 </header>
 
 <div class="wrap">
 
+  <div class="card" id="clinicSetup" style="display:none; border:2px dashed var(--pink); margin-bottom:24px;">
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+      <span style="font-size:22px;">🏥</span>
+      <div style="flex:1; min-width:220px;">
+        <b style="font-size:15px;">Register your clinic to start using CLINQO</b>
+        <div style="font-size:13px; color:var(--muted);">Your clinic name is stored on this device only. It appears in the header and in backups.</div>
+      </div>
+      <input id="clinicNameInput" placeholder="Clinic name (e.g. Klinik Pergigian Mesra)" style="max-width:340px;">
+      <button class="pink" id="clinicRegisterBtn" onclick="registerClinic()">Register Clinic</button>
+    </div>
+  </div>
+
+
   <div class="pdpa-banner">
     <span style="font-size:18px;">🔒</span>
     <div>
-      <b>Data protection notice (PDPA 2010).</b> Patient personal data in this screen is used only for managing
-      today’s visits. Nothing is stored or transmitted — all entries are cleared when the page is closed.
-      Patients have the right to access and correct their personal data and to withdraw consent;
-      contact the clinic’s data protection officer for any request. Do not enter real patient data in this demo.
+      <b>Data protection notice (PDPA 2010).</b> Patient data in this screen is used only for managing clinic
+      visits and is stored locally on this device’s browser. Record consent before registering a patient.
+      Do not share this device or browser profile with unauthorised staff. Use “Download Backup” to keep a
+      secure copy in the patient file, and “Clear All Patient Data” at end of day. Patients have the right to
+      access, correct, and withdraw their data — route requests to the clinic’s data protection officer.
     </div>
   </div>
 
@@ -208,13 +245,14 @@
         <input id="pName" placeholder="Full name (e.g. Nurul Hidayah)">
         <input id="pPhone" placeholder="Phone (e.g. 012-345 6789)">
         <input id="pAge" type="number" min="0" max="120" placeholder="Age">
-        <select id="pType">
+        <input id="pType" list="typeSuggestions" placeholder="Visit type (e.g. Dental Check-up)">
+        <datalist id="typeSuggestions">
           <option>New Patient Screening</option>
           <option>Dental Check-up</option>
           <option>General Consultation</option>
           <option>Blood Test Review</option>
           <option>Physiotherapy Session</option>
-        </select>
+        </datalist>
         <button class="pink" onclick="addPatient()">Add Patient</button>
       </div>
       <label class="consent-row">
@@ -224,8 +262,11 @@
         data protection officer.</span>
       </label>
       <div id="patList"></div>
-      <div style="margin-top:12px;">
-        <button class="small" style="background:#8a8499;" onclick="clearAllData()">Clear All Patient Data (End of Session)</button>
+      <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="small" style="background:#8a8499;" onclick="clearAllData()">Clear All Patient Data (End of Day)</button>
+        <button class="small" style="background:#0984e3;" onclick="downloadBackup()">Download Backup (.json)</button>
+        <button class="small" style="background:#2d9d78;" onclick="$('restoreFile').click()">Restore Backup</button>
+        <input type="file" id="restoreFile" accept=".json,application/json" style="display:none;" onchange="restoreBackup(event)">
       </div>
     </div>
   </section>
@@ -271,8 +312,8 @@
 </div>
 
 <div class="footer-note">
-  CLINQO demo · Personal data handled in line with the Personal Data Protection Act 2010 (Act 709) and
-  Ministry of Health Malaysia privacy guidance · Sample data only — not for use with real patient records.
+  CLINQO · Personal data handled in line with the Personal Data Protection Act 2010 (Act 709) and
+  Ministry of Health Malaysia privacy guidance · Data is stored on this device only and never transmitted.
 </div>
 
 <div class="toast" id="toast"></div>
@@ -283,17 +324,49 @@ const STAGE_COLORS = ["#ff9f43", "#ff4f81", "#00b8a9", "#6c5ce7", "#2d9d78"];
 const AVATAR_COLORS = ["#ff4f81", "#6c5ce7", "#00b8a9", "#ff9f43", "#e84393", "#0984e3"];
 const TYPES = ["New Patient Screening","Dental Check-up","General Consultation","Blood Test Review","Physiotherapy Session"];
 
-let patients = [
-  { id: 1, name: "Nurul Hidayah",  phone: "012-345 6789", age: 34, type: "General Consultation", stage: 3 },
-  { id: 2, name: "Lim Chee Keong", phone: "017-888 2210", age: 47, type: "Dental Check-up",      stage: 1 },
-  { id: 3, name: "Kavitha Raman",  phone: "019-654 3321", age: 28, type: "New Patient Screening", stage: 0 },
-];
-let nextId = 4;
-let selected = 1;
+let patients = [];
+let nextId = 1;
+let selected = null;
+let summaries = {};
 
-let summaries = {
-  1: "Discussed recurring tension headaches. Advised hydration and screen breaks; follow-up in 4 weeks if unresolved.",
-};
+const STORAGE_KEY = "clinqo-data";
+let clinicName = "";
+function saveState(){
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ clinicName, patients, summaries, nextId, selected }));
+  } catch (e) { /* storage unavailable — session-only mode */ }
+}
+function loadState(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    clinicName = typeof d.clinicName === "string" ? d.clinicName : "";
+    patients = Array.isArray(d.patients) ? d.patients : [];
+    summaries = d.summaries || {};
+    nextId = d.nextId || (patients.length ? Math.max(...patients.map(p=>p.id)) + 1 : 1);
+    selected = patients.some(p=>p.id===d.selected) ? d.selected : (patients[0] ? patients[0].id : null);
+  } catch (e) { /* unreadable storage — start fresh */ }
+}
+
+function applyClinicName(){
+  $("headerSub").textContent = clinicName ? clinicName + " · Patient visit tracker" : "Patient visit tracker";
+  $("clinicSetup").style.display = clinicName ? "none" : "flex";
+  $("clinicRegisterBtn").textContent = clinicName ? "Save" : "Register Clinic";
+}
+function registerClinic(){
+  const name = $("clinicNameInput").value.trim();
+  if (!name){ toast("Please enter your clinic’s name."); $("clinicNameInput").focus(); return; }
+  clinicName = name;
+  saveState();
+  applyClinicName();
+  toast("Welcome — " + name + " is ready to use CLINQO.");
+}
+function editClinicName(){
+  $("clinicNameInput").value = clinicName;
+  $("clinicSetup").style.display = "flex";
+  $("clinicNameInput").focus();
+}
 
 function $(id){ return document.getElementById(id); }
 function toast(msg){
@@ -307,6 +380,10 @@ function initials(n){ return n.split(" ").map(w=>w[0]).slice(0,2).join("").toUpp
 
 /* ---------- Section 1 ---------- */
 function renderPatients(){
+  if (!patients.length){
+    $("patList").innerHTML = `<div class="empty">No patients yet — register the first patient above.</div>`;
+    return;
+  }
   $("patList").innerHTML = patients.map(p=>`
     <div class="pat-row ${p.id===selected?"selected":""}" onclick="selectPatient(${p.id})">
       <div class="avatar" style="background:${AVATAR_COLORS[(p.id-1)%AVATAR_COLORS.length]}">${initials(p.name)}</div>
@@ -322,7 +399,7 @@ function addPatient(){
   const name = $("pName").value.trim();
   const phone = $("pPhone").value.trim() || "Not provided";
   const age = parseInt($("pAge").value, 10);
-  const type = $("pType").value;
+  const type = $("pType").value.trim() || "General Consultation";
   if (!name){ toast("Please enter the patient’s name."); $("pName").focus(); return; }
   if (isNaN(age) || age < 0 || age > 120){ toast("Please enter a valid age."); $("pAge").focus(); return; }
   if (!$("pConsent").checked){ toast("PDPA consent must be recorded before registering the patient."); $("pConsent").focus(); return; }
@@ -331,6 +408,7 @@ function addPatient(){
   nextId++;
   $("pName").value = ""; $("pPhone").value = ""; $("pAge").value = "";
   $("pConsent").checked = false;
+  saveState();
   renderAll();
   toast(`${name} registered — consent recorded, stage: Registered`);
 }
@@ -338,6 +416,7 @@ function addPatient(){
 function selectPatient(id){
   selected = id;
   $("sumInput").value = summaries[id] || "";
+  saveState();
   renderAll();
 }
 
@@ -347,6 +426,7 @@ function moveStep(dir){
   const next = Math.min(STAGES.length-1, Math.max(0, p.stage + dir));
   if (next === p.stage){ toast(p.stage===0 ? "Already at the first stage." : "Visit already completed."); return; }
   p.stage = next;
+  saveState();
   renderAll();
   toast(`${p.name} → ${STAGES[next]}`);
 }
@@ -399,16 +479,56 @@ function saveSummary(){
   const txt = $("sumInput").value.trim();
   if (!txt){ toast("Type a short summary before saving."); $("sumInput").focus(); return; }
   summaries[selected] = txt;
+  saveState();
   renderSummary();
   toast("Visit summary saved.");
 }
 
 function clearAllData(){
+  if (!patients.length){ toast("No patient data on screen."); return; }
+  const ok = confirm("This permanently clears all patient data from this device.\n\nTip: use “Download Backup” first if you need a copy for the patient file.\n\nContinue?");
+  if (!ok) return;
   patients = [];
   summaries = {};
   selected = null;
+  saveState();
   renderAll();
-  toast("All patient data cleared from this session.");
+  toast("All patient data cleared from this device.");
+}
+
+function downloadBackup(){
+  const data = JSON.stringify({ clinicName, patients, summaries, exportedAt: new Date().toISOString() }, null, 2);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+  a.download = "clinqo-backup-" + new Date().toISOString().slice(0,10) + ".json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast("Backup downloaded. Store it securely — it contains patient data.");
+}
+
+function restoreBackup(ev){
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const d = JSON.parse(reader.result);
+      if (!Array.isArray(d.patients)) throw new Error("not a CLINQO backup");
+      patients = d.patients;
+      summaries = d.summaries || {};
+      if (typeof d.clinicName === "string" && d.clinicName) clinicName = d.clinicName;
+      nextId = patients.length ? Math.max(...patients.map(p=>p.id)) + 1 : 1;
+      selected = patients[0] ? patients[0].id : null;
+      saveState();
+      $("sumInput").value = summaries[selected] || "";
+      renderAll();
+      toast("Backup restored — " + patients.length + " patient(s) loaded.");
+    } catch (e) {
+      toast("Could not read that file — is it a CLINQO backup?");
+    }
+    ev.target.value = "";
+  };
+  reader.readAsText(file);
 }
 
 function renderAll(){
@@ -417,8 +537,15 @@ function renderAll(){
   renderSummary();
 }
 
+loadState();
+applyClinicName();
 $("sumInput").value = summaries[selected] || "";
 renderAll();
+
+function toggleTheme(){
+  document.body.classList.toggle("dark");
+  $("themeToggle").textContent = document.body.classList.contains("dark") ? "☀️" : "🌙";
+}
 </script>
 </body>
 </html>
